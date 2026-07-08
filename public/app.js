@@ -3,10 +3,10 @@ import {
   cartTotals,
   createCart,
   setQuantity,
-} from "../src/cart.js";
-import { formatMoney } from "../src/format.js";
-import { PRODUCTS } from "../src/products.js";
-import { validateCheckout } from "../src/validate.js";
+} from "./src/cart.js";
+import { formatMoney } from "./src/format.js";
+import { PRODUCTS } from "./src/products.js";
+import { validateCheckout } from "./src/validate.js";
 
 let cart = createCart();
 

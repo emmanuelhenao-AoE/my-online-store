@@ -7,7 +7,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "npx --yes serve public -l 3000"
+    "build:site": "node scripts/build-site.mjs",
+    "prestart": "npm run build:site",
+    "start": "npx --yes serve _site -l 3000"
   },
   "devDependencies": {
     "vitest": "^3.2.4"

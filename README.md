@@ -21,6 +21,19 @@ npm start
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+## GitHub repo vs live website
+
+| URL | What you see |
+|-----|----------------|
+| `https://github.com/USER/my-online-store` | The **repository** (code + this README). Normal. |
+| `https://USER.github.io/my-online-store/` | The **hosted website** (GitHub Pages). |
+
+The README is not the site. Enable Pages once:
+
+1. Push these files (including `.github/workflows/deploy-pages.yml`).
+2. Repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+3. After the workflow turns green, open the `*.github.io` URL above.
+
 ## Push to GitHub
 
 Create an empty repo on GitHub named `my-online-store`, then:
