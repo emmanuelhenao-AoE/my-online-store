@@ -1,21 +1,20 @@
 /**
  * CI/CD pipeline for my-online-store
  *
- * Intended setup: Multibranch Pipeline scanning this GitHub repo.
- *
  * Feature / secondary branches:
- *   1. Checkout the branch commit
- *   2. npm ci + npm test
- *   3. If green → merge that branch into master and push to GitHub
- *   4. Slack: success or failure
+ *   1. Checkout → npm ci → npm test
+ *   2. If green → merge into master and push
+ *   3. Email: success or failure
  *
- * master / main:
- *   1. Run tests only (no merge — avoids loops)
- *   2. Slack: success or failure
+ * master:
+ *   1. Run tests only (no merge)
+ *   2. Email: success or failure
  *
- * Required Jenkins credentials (Manage Jenkins → Credentials):
- *   github-push     → Username + password (GitHub username + PAT with "repo" scope)
- *   slack-webhook   → Secret text (Slack Incoming Webhook URL)
+ * Jenkins credentials:
+ *   github-push → GitHub username + PAT (repo scope)
+ *
+ * Jenkins system config (Manage Jenkins → System → E-mail Notification):
+ *   SMTP server, port, TLS, username, password (see README)
  */
 
 pipeline {
@@ -28,10 +27,10 @@ pipeline {
   }
 
   environment {
-    // Change if you fork the repo
     GITHUB_REPO = 'emmanuelhenao-AoE/my-online-store'
-    // Branch that receives merges after green tests
     TARGET_BRANCH = 'master'
+    // Change to your inbox — Jenkins sends build alerts here
+    NOTIFY_EMAIL = 'emmanuel.estrada@arrayofengineers.com'
   }
 
   stages {
@@ -39,7 +38,6 @@ pipeline {
       steps {
         checkout scm
         script {
-          // Normalize branch name across Multibranch / single Pipeline jobs
           env.CURRENT_BRANCH = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '') ?: 'unknown'
           echo "Building branch: ${env.CURRENT_BRANCH}"
         }
@@ -80,12 +78,9 @@ pipeline {
             git config user.email "jenkins-ci@users.noreply.github.com"
             git config user.name "Jenkins CI"
 
-            # Authenticated remote for fetch/push
             git remote set-url origin \
               "https://${GIT_USER}:${GIT_PASS}@github.com/${GITHUB_REPO}.git"
 
-            # Multibranch only checks out THIS branch — fetch master (and this
-            # branch) by name so origin/master exists for the merge.
             git fetch --no-tags origin \
               "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
             git fetch --no-tags origin \
@@ -109,16 +104,31 @@ pipeline {
       script {
         def merged = (env.CURRENT_BRANCH != env.TARGET_BRANCH && env.CURRENT_BRANCH != 'main')
         def detail = merged
-          ? "Tests passed. Merged *${env.CURRENT_BRANCH}* → *${env.TARGET_BRANCH}*."
-          : "Tests passed on *${env.CURRENT_BRANCH}* (no merge)."
-        notifySlack('good', "✅ *${env.JOB_NAME}* #${env.BUILD_NUMBER}\n${detail}\n${env.BUILD_URL}")
+          ? "Tests passed. Merged ${env.CURRENT_BRANCH} → ${env.TARGET_BRANCH}."
+          : "Tests passed on ${env.CURRENT_BRANCH} (no merge)."
+        notifyEmail(
+          "[CI PASS] ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+          """Build succeeded.
+
+${detail}
+
+Branch: ${env.CURRENT_BRANCH}
+Build:  ${env.BUILD_URL}
+"""
+        )
       }
     }
     failure {
       script {
-        notifySlack(
-          'danger',
-          "❌ *${env.JOB_NAME}* #${env.BUILD_NUMBER}\nTests or merge failed on *${env.CURRENT_BRANCH}*. Master was NOT updated.\n${env.BUILD_URL}"
+        notifyEmail(
+          "[CI FAIL] ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+          """Build failed.
+
+Tests or merge failed on ${env.CURRENT_BRANCH}.
+Master was NOT updated.
+
+Build: ${env.BUILD_URL}
+"""
         )
       }
     }
@@ -126,24 +136,22 @@ pipeline {
 }
 
 /**
- * Posts to Slack when credential `slack-webhook` exists.
- * If missing, logs the message and continues so early builds can still go green.
+ * Sends email via Jenkins mailer (requires SMTP in Manage Jenkins → System).
+ * Skips gracefully if NOTIFY_EMAIL is empty or SMTP is not configured.
  */
-void notifySlack(String color, String text) {
+void notifyEmail(String subject, String body) {
+  def to = env.NOTIFY_EMAIL?.trim()
+  if (!to) {
+    echo "Email skipped: set NOTIFY_EMAIL in Jenkinsfile."
+    return
+  }
+
   try {
-    withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
-      def safe = text
-        .replace('\\', '\\\\')
-        .replace('"', '\\"')
-        .replace('\n', '\\n')
-      sh """
-        curl -sS -X POST -H 'Content-type: application/json' \\
-          --data '{"attachments":[{"color":"${color}","mrkdwn_in":["text"],"text":"${safe}"}]}' \\
-          "\$SLACK_WEBHOOK"
-      """
-    }
+    mail to: to,
+         subject: subject,
+         body: body
+    echo "Email sent to ${to}"
   } catch (err) {
-    echo "Slack skipped (add credential id 'slack-webhook' when ready). Message:\n${text}"
-    echo "Reason: ${err}"
+    echo "Email failed (check SMTP under Manage Jenkins → System): ${err}"
   }
 }

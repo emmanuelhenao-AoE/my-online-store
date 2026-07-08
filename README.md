@@ -1,6 +1,6 @@
 # My Online Store
 
-Demo storefront for learning **CI/CD** with GitHub, Jenkins (Docker Desktop), and Slack.
+Demo storefront for learning **CI/CD** with GitHub, Jenkins (Docker Desktop), and email alerts.
 
 ## What you can do in the site
 
@@ -33,15 +33,16 @@ Jenkins runs:  npm ci  →  npm test
    ┌────┴────┐
  fail       pass
    ↓          ↓
- Slack ❌   merge branch → master and push
-            Slack ✅
+ fail       pass
+   ↓          ↓
+ Email ❌   merge branch → master and push
+            Email ✅
         ↓
 GitHub Pages updates from master (your live site)
 ```
 
-- **Failing tests:** Slack gets a failure message; `master` is left alone.
-- **Passing tests:** Slack gets a success message; Jenkins merges the branch into `master`.
-- Pushing directly to `master` still runs tests + Slack, but does **not** merge (avoids loops).
+- **Failing tests:** email alert; `master` is left alone.
+- **Passing tests:** email alert; Jenkins merges the branch into `master`.
 
 ---
 
@@ -91,16 +92,22 @@ docker exec my-online-store-jenkins cat /var/jenkins_home/secrets/initialAdminPa
 | Password | a [Personal Access Token](https://github.com/settings/tokens) with **`repo`** scope |
 | ID | `github-push` |
 
-### B) Slack webhook — ID: `slack-webhook`
+### B) Email alerts (SMTP in Jenkins)
 
-1. In Slack: create an [Incoming Webhook](https://api.slack.com/messaging/webhooks) for a channel (e.g. `#ci-alerts`).
-2. In Jenkins:
+No Slack app needed. Configure once in Jenkins:
 
-| Field | Value |
-|-------|--------|
-| Kind | Secret text |
-| Secret | the webhook URL (`https://hooks.slack.com/services/...`) |
-| ID | `slack-webhook` |
+1. **Manage Jenkins → System** → scroll to **E-mail Notification**
+2. Example for **Gmail**:
+   - SMTP server: `smtp.gmail.com`
+   - Default user e-mail suffix: `@gmail.com` (optional)
+   - **Advanced** → Port: `587`, check **Use TLS**
+   - Credentials: your Gmail address + [App Password](https://myaccount.google.com/apppasswords) (not your normal login password)
+3. Set **System Admin e-mail address** to the same Gmail address
+4. **Test configuration** → send test email to yourself → **Save**
+
+In `Jenkinsfile`, set `NOTIFY_EMAIL` to the inbox that should receive CI alerts.
+
+**Work email (Microsoft 365):** SMTP server `smtp.office365.com`, port `587`, TLS, your work email + password or app password if your org allows SMTP.
 
 ---
 
@@ -139,13 +146,13 @@ git push -u origin feature/demo-change
 
 Then in Jenkins: scan/build that branch.
 
-**Expect:** tests green → branch merged into `master` → Slack success.
+**Expect:** tests green → branch merged into `master` → email success.
 
 To see failure:
 
 1. Change an `expect(...)` in `tests/store.test.js` so it fails.
 2. Commit + push to a feature branch.
-3. **Expect:** Slack failure; `master` unchanged.
+3. **Expect:** failure email; `master` unchanged.
 
 ---
 
@@ -169,14 +176,15 @@ my-online-store/
   index.html / app.js / styles.css   # website UI
   src/                               # cart, products, validation
   tests/store.test.js                # Vitest suite (npm test)
-  Jenkinsfile                        # test → merge → Slack
+  Jenkinsfile                        # test → merge → email
   jenkins/Dockerfile                 # Jenkins image with Node 20
   docker-compose.yml
 ```
 
 ## Important notes
 
-- Credential IDs in Jenkins **must** be exactly `github-push` and `slack-webhook` (see `Jenkinsfile`).
+- Credential ID for GitHub **must** be exactly `github-push`.
+- Set `NOTIFY_EMAIL` in `Jenkinsfile` and SMTP under **Manage Jenkins → System**.
 - Prefer working on **feature branches**, not directly on `master`, so the auto-merge path is exercised.
 - Auto-merge will fail if Git has real conflicts — resolve them on the feature branch and push again.
 - This lab uses **Jenkins merge-to-master**. Many teams instead use **Pull Requests + required checks** (no auto-merge). Both demonstrate CI/CD; PR protection is more common in industry.
