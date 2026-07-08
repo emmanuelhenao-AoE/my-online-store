@@ -1,12 +1,14 @@
-# Local Jenkins for Docker Desktop (learning CI/CD)
+# Local Jenkins for Docker Desktop
 #
-# Start:  docker compose up -d
-# Open:   http://localhost:8080
-# Stop:   docker compose down
+# First time:  docker compose up -d --build
+# Open:        http://localhost:8080
+# Stop:        docker compose down
 
 services:
   jenkins:
-    image: jenkins/jenkins:lts-jdk17
+    build:
+      context: ./jenkins
+    image: my-online-store-jenkins:local
     container_name: my-online-store-jenkins
     restart: unless-stopped
     ports:
@@ -14,7 +16,6 @@ services:
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=true
 

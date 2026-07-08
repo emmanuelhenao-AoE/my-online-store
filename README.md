@@ -1,6 +1,6 @@
 # My Online Store
 
-Demo storefront for learning **CI/CD** with GitHub, Jenkins (Docker Desktop), tests, and later Slack.
+Demo storefront for learning **CI/CD** with GitHub, Jenkins (Docker Desktop), and Slack.
 
 ## What you can do in the site
 
@@ -19,84 +19,164 @@ npm test
 npm start
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-## GitHub repo vs live website
+## How this CI/CD flow works
 
-| URL | What you see |
-|-----|----------------|
-| `https://github.com/USER/my-online-store` | The **repository** (code + this README). Normal. |
-| `https://USER.github.io/my-online-store/` | The **hosted website** (GitHub Pages). |
-
-Pages must publish the branch that contains root `index.html` (this repo uses `master`):
-
-1. Repo **Settings → Pages → Build and deployment**
-2. Source: **Deploy from a branch**
-3. Branch: **master** / folder: **/ (root)**
-4. Wait a minute, hard-refresh the `*.github.io` URL
-
-(Optional alternative: Source **GitHub Actions**, which uses `.github/workflows/deploy-pages.yml`.)
-
-## Push to GitHub
-
-Create an empty repo on GitHub named `my-online-store`, then:
-
-```bash
-git add .
-git commit -m "Initial commit: demo store with cart, checkout tests, and Jenkins pipeline"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/my-online-store.git
-git push -u origin main
+```text
+You commit to a secondary branch (feature/*, fix/*, etc.)
+        ↓
+GitHub notifies Jenkins (webhook or Multibranch scan)
+        ↓
+Jenkins runs:  npm ci  →  npm test
+        ↓
+   ┌────┴────┐
+ fail       pass
+   ↓          ↓
+ Slack ❌   merge branch → master and push
+            Slack ✅
+        ↓
+GitHub Pages updates from master (your live site)
 ```
 
-## Run tests (what Jenkins will run)
+- **Failing tests:** Slack gets a failure message; `master` is left alone.
+- **Passing tests:** Slack gets a success message; Jenkins merges the branch into `master`.
+- Pushing directly to `master` still runs tests + Slack, but does **not** merge (avoids loops).
+
+---
+
+## 1. Run tests locally (same as Jenkins)
 
 ```bash
 npm test
 ```
 
-To practice a **failing** build: temporarily break an assertion in `tests/store.test.js`, commit, and watch Jenkins go red.
+Tests live in `tests/store.test.js` (18 checks).
 
-## Jenkins on Docker Desktop
+---
 
-1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+## 2. Start Jenkins on Docker Desktop
+
+1. Start [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 2. From this project folder:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 3. Open [http://localhost:8080](http://localhost:8080).
-4. Get the initial admin password:
+4. Unlock with:
 
 ```bash
 docker exec my-online-store-jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
 
-5. Install suggested plugins, create an admin user.
-6. Create a **Pipeline** job:
-   - Definition: **Pipeline script from SCM**
-   - SCM: Git → your GitHub repo URL
-   - Script path: `Jenkinsfile`
-7. Click **Build Now**. Green = tests passed.
+5. Install **suggested plugins**, then also install:
+   - **Pipeline: Multibranch**
+   - **GitHub Branch Source** (or GitHub plugin)
+6. Create your admin user.
 
-Slack alerts are commented out in `Jenkinsfile` until you configure the Slack plugin and webhook.
+---
+
+## 3. Add Jenkins credentials
+
+**Manage Jenkins → Credentials → (global) → Add Credentials**
+
+### A) GitHub push token — ID: `github-push`
+
+| Field | Value |
+|-------|--------|
+| Kind | Username with password |
+| Username | your GitHub username |
+| Password | a [Personal Access Token](https://github.com/settings/tokens) with **`repo`** scope |
+| ID | `github-push` |
+
+### B) Slack webhook — ID: `slack-webhook`
+
+1. In Slack: create an [Incoming Webhook](https://api.slack.com/messaging/webhooks) for a channel (e.g. `#ci-alerts`).
+2. In Jenkins:
+
+| Field | Value |
+|-------|--------|
+| Kind | Secret text |
+| Secret | the webhook URL (`https://hooks.slack.com/services/...`) |
+| ID | `slack-webhook` |
+
+---
+
+## 4. Create a Multibranch Pipeline job
+
+1. **New Item → Multibranch Pipeline** (name e.g. `my-online-store`).
+2. **Branch Sources → Add source → GitHub** (or Git):
+   - Owner / Repository: `emmanuelhenao-AoE/my-online-store`
+   - Credentials: `github-push` (or browse token)
+3. **Build Configuration:** by Jenkinsfile, path `Jenkinsfile`.
+4. **Scan Multibranch Pipeline Triggers:** periodically (e.g. 1 minute) **or** add a GitHub webhook (below).
+5. Save → Jenkins discovers branches and builds them.
+
+### Optional: GitHub webhook (instant builds)
+
+Repo → **Settings → Webhooks → Add webhook**
+
+- Payload URL: `http://YOUR_PUBLIC_JENKIN_URL/github-webhook/`  
+  (From a home PC you need a tunnel such as [ngrok](https://ngrok.com/) → `https://xxxx.ngrok.io/github-webhook/`)
+- Content type: `application/json`
+- Events: **Just the push event**
+
+Without a public URL, use **Scan Multibranch Pipeline Now** after each push, or the periodic scan.
+
+---
+
+## 5. Practice the full loop
+
+```bash
+git checkout -b feature/demo-change
+# edit something small (keep tests green)
+git add .
+git commit -m "demo: small safe change"
+git push -u origin feature/demo-change
+```
+
+Then in Jenkins: scan/build that branch.
+
+**Expect:** tests green → branch merged into `master` → Slack success.
+
+To see failure:
+
+1. Change an `expect(...)` in `tests/store.test.js` so it fails.
+2. Commit + push to a feature branch.
+3. **Expect:** Slack failure; `master` unchanged.
+
+---
+
+## GitHub Pages (the live site)
+
+| URL | What you see |
+|-----|----------------|
+| `https://github.com/emmanuelhenao-AoE/my-online-store` | Repository (code + README) |
+| `https://emmanuelhenao-AoE.github.io/my-online-store/` | Hosted website |
+
+Pages settings: **Settings → Pages → Deploy from a branch → `master` / root**.
+
+After a green merge to `master`, refresh the `*.github.io` URL to see the update.
+
+---
 
 ## Project layout
 
 ```text
 my-online-store/
-  index.html        # website UI (repo root = GitHub Pages site)
-  app.js
-  styles.css
-  src/              # cart, products, validation, money formatting
-  tests/            # Vitest suite (npm test)
-  Jenkinsfile       # CI pipeline
+  index.html / app.js / styles.css   # website UI
+  src/                               # cart, products, validation
+  tests/store.test.js                # Vitest suite (npm test)
+  Jenkinsfile                        # test → merge → Slack
+  jenkins/Dockerfile                 # Jenkins image with Node 20
   docker-compose.yml
 ```
 
-## Next steps (after first green build)
+## Important notes
 
-1. Connect GitHub webhook so every push triggers Jenkins.
-2. Uncomment `slackSend` in `Jenkinsfile` and configure Slack credentials.
-3. Protect `main` with a required status check, or only deploy when Jenkins is green.
+- Credential IDs in Jenkins **must** be exactly `github-push` and `slack-webhook` (see `Jenkinsfile`).
+- Prefer working on **feature branches**, not directly on `master`, so the auto-merge path is exercised.
+- Auto-merge will fail if Git has real conflicts — resolve them on the feature branch and push again.
+- This lab uses **Jenkins merge-to-master**. Many teams instead use **Pull Requests + required checks** (no auto-merge). Both demonstrate CI/CD; PR protection is more common in industry.
