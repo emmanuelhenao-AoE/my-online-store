@@ -4,7 +4,7 @@
  * Feature / secondary branches:
  *   1. Checkout → npm ci → npm test
  *   2. If green → merge into master and push
- *   3. Email on pass or fail (fail includes which test broke)
+ *   3. Email on failure only (pass = no email)
  *
  * Jenkins credentials:
  *   github-push → GitHub username + PAT (repo scope)
@@ -102,22 +102,7 @@ pipeline {
 
   post {
     success {
-      script {
-        def merged = isFeatureBranch()
-        def detail = merged
-          ? "Tests passed. Merged ${env.CURRENT_BRANCH} → ${env.TARGET_BRANCH}."
-          : "Tests passed on ${env.CURRENT_BRANCH} (no merge)."
-        notifyEmail(
-          "[CI PASS] ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-          """Build succeeded.
-
-${detail}
-
-Branch: ${env.CURRENT_BRANCH}
-Build:  ${env.BUILD_URL}
-"""
-        )
-      }
+      echo "Build passed on ${env.CURRENT_BRANCH} — no email sent (failures only)."
     }
     failure {
       script {
