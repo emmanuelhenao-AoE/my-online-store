@@ -84,9 +84,13 @@ pipeline {
             git remote set-url origin \
               "https://${GIT_USER}:${GIT_PASS}@github.com/${GITHUB_REPO}.git"
 
-            git fetch origin
+            # Multibranch only checks out THIS branch — fetch master (and this
+            # branch) by name so origin/master exists for the merge.
+            git fetch --no-tags origin \
+              "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
+            git fetch --no-tags origin \
+              "+refs/heads/${CURRENT_BRANCH}:refs/remotes/origin/${CURRENT_BRANCH}"
 
-            # Bring in latest master, then merge the branch Jenkins just tested
             git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
             git merge --no-ff "origin/${CURRENT_BRANCH}" \
               -m "ci: merge ${CURRENT_BRANCH} after green tests (#${BUILD_NUMBER})"
