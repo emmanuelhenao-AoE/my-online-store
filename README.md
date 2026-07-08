@@ -28,11 +28,14 @@ Then open [http://localhost:3000](http://localhost:3000).
 | `https://github.com/USER/my-online-store` | The **repository** (code + this README). Normal. |
 | `https://USER.github.io/my-online-store/` | The **hosted website** (GitHub Pages). |
 
-The README is not the site. Enable Pages once:
+Pages must publish the branch that contains root `index.html` (this repo uses `master`):
 
-1. Push these files (including `.github/workflows/deploy-pages.yml`).
-2. Repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. After the workflow turns green, open the `*.github.io` URL above.
+1. Repo **Settings → Pages → Build and deployment**
+2. Source: **Deploy from a branch**
+3. Branch: **master** / folder: **/ (root)**
+4. Wait a minute, hard-refresh the `*.github.io` URL
+
+(Optional alternative: Source **GitHub Actions**, which uses `.github/workflows/deploy-pages.yml`.)
 
 ## Push to GitHub
 
@@ -83,7 +86,9 @@ Slack alerts are commented out in `Jenkinsfile` until you configure the Slack pl
 
 ```text
 my-online-store/
-  public/           # website UI
+  index.html        # website UI (repo root = GitHub Pages site)
+  app.js
+  styles.css
   src/              # cart, products, validation, money formatting
   tests/            # Vitest suite (npm test)
   Jenkinsfile       # CI pipeline
