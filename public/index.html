@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Summit Supply — My Online Store</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <p class="brand-name">Summit Supply</p>
+          <p class="brand-tag">Demo store for CI/CD practice</p>
+        </div>
+      </div>
+      <nav>
+        <a href="#products">Shop</a>
+        <a href="#cart">Cart (<span id="cart-count">0</span>)</a>
+        <a href="#checkout">Checkout</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>Gear that earns its pack weight</h1>
+        <p>
+          A tiny online store with real cart, tax, shipping, and checkout rules —
+          built so Jenkins can run tests on every commit.
+        </p>
+        <a class="button" href="#products">Browse products</a>
+      </section>
+
+      <section id="products" class="products">
+        <h2>Products</h2>
+        <div id="product-grid" class="product-grid"></div>
+      </section>
+
+      <section id="cart" class="panel">
+        <h2>Your cart</h2>
+        <div id="cart-lines" class="cart-lines">
+          <p class="muted">Cart is empty. Add something from the shop.</p>
+        </div>
+        <dl id="cart-summary" class="summary hidden">
+          <div><dt>Subtotal</dt><dd id="sum-subtotal">$0.00</dd></div>
+          <div><dt>Tax (7%)</dt><dd id="sum-tax">$0.00</dd></div>
+          <div><dt>Shipping</dt><dd id="sum-shipping">$0.00</dd></div>
+          <div class="total"><dt>Total</dt><dd id="sum-total">$0.00</dd></div>
+        </dl>
+        <p class="hint">Free shipping on orders $75+</p>
+      </section>
+
+      <section id="checkout" class="panel">
+        <h2>Checkout</h2>
+        <form id="checkout-form" novalidate>
+          <label>
+            Full name
+            <input name="name" autocomplete="name" required />
+            <span class="field-error" data-error-for="name"></span>
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" autocomplete="email" required />
+            <span class="field-error" data-error-for="email"></span>
+          </label>
+          <label>
+            Shipping address
+            <input name="address" autocomplete="street-address" required />
+            <span class="field-error" data-error-for="address"></span>
+          </label>
+          <label>
+            ZIP code
+            <input name="zip" autocomplete="postal-code" required />
+            <span class="field-error" data-error-for="zip"></span>
+          </label>
+          <button type="submit" class="button">Place order</button>
+          <p id="checkout-message" class="checkout-message" role="status"></p>
+        </form>
+      </section>
+    </main>
+
+    <footer>
+      <p>my-online-store · learning project · not a real shop</p>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
