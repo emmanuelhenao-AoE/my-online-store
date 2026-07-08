@@ -4,17 +4,14 @@
  * Feature / secondary branches:
  *   1. Checkout → npm ci → npm test
  *   2. If green → merge into master and push
- *   3. Email: success or failure
- *
- * master:
- *   1. Run tests only (no merge)
- *   2. Email: success or failure
+ *   3. Email on pass or fail (fail includes which test broke)
  *
  * Jenkins credentials:
  *   github-push → GitHub username + PAT (repo scope)
  *
- * Jenkins system config (Manage Jenkins → System → E-mail Notification):
- *   SMTP server, port, TLS, username, password (see README)
+ * Gmail SMTP (Manage Jenkins → System → E-mail Notification):
+ *   smtp.gmail.com:587, TLS, your Gmail + App Password
+ *   System Admin e-mail address = same Gmail
  */
 
 pipeline {
@@ -29,8 +26,8 @@ pipeline {
   environment {
     GITHUB_REPO = 'emmanuelhenao-AoE/my-online-store'
     TARGET_BRANCH = 'master'
-    // Change to your inbox — Jenkins sends build alerts here
-    NOTIFY_EMAIL = 'emmanuel.estrada@arrayofengineers.com'
+    // Your personal inbox — Jenkins sends alerts here
+    NOTIFY_EMAIL = 'emmanuelhenaoestrada@gmail.com'
   }
 
   stages {
@@ -52,7 +49,11 @@ pipeline {
 
     stage('Test') {
       steps {
-        sh 'npm test'
+        sh '''
+          mkdir -p test-results
+          set -o pipefail
+          npm test 2>&1 | tee test-results/console.txt
+        '''
       }
     }
 
@@ -102,7 +103,7 @@ pipeline {
   post {
     success {
       script {
-        def merged = (env.CURRENT_BRANCH != env.TARGET_BRANCH && env.CURRENT_BRANCH != 'main')
+        def merged = isFeatureBranch()
         def detail = merged
           ? "Tests passed. Merged ${env.CURRENT_BRANCH} → ${env.TARGET_BRANCH}."
           : "Tests passed on ${env.CURRENT_BRANCH} (no merge)."
@@ -120,29 +121,90 @@ Build:  ${env.BUILD_URL}
     }
     failure {
       script {
-        notifyEmail(
-          "[CI FAIL] ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-          """Build failed.
+        def merged = isFeatureBranch()
+        def failureDetails = summarizeFailures()
 
-Tests or merge failed on ${env.CURRENT_BRANCH}.
-Master was NOT updated.
+        def body = """Build FAILED on branch: ${env.CURRENT_BRANCH}
 
-Build: ${env.BUILD_URL}
 """
-        )
+        if (merged) {
+          body += """*** MASTER WAS NOT UPDATED ***
+Your changes on "${env.CURRENT_BRANCH}" were NOT merged to master.
+The live site (GitHub Pages) is unchanged.
+
+"""
+        } else {
+          body += """master branch build failed — review before deploying.
+
+"""
+        }
+
+        body += """What failed:
+${failureDetails}
+
+Full build log:
+${env.BUILD_URL}
+"""
+        def subject = merged
+          ? "[CI FAIL] ${env.CURRENT_BRANCH} — tests failed, master NOT updated"
+          : "[CI FAIL] master — build failed"
+
+        notifyEmail(subject, body)
       }
     }
   }
 }
 
+boolean isFeatureBranch() {
+  return env.CURRENT_BRANCH != env.TARGET_BRANCH &&
+    env.CURRENT_BRANCH != 'main' &&
+    env.CURRENT_BRANCH != 'unknown'
+}
+
 /**
- * Sends email via Jenkins mailer (requires SMTP in Manage Jenkins → System).
- * Skips gracefully if NOTIFY_EMAIL is empty or SMTP is not configured.
+ * Pull failed test names/messages from JUnit XML or Vitest console output.
  */
+String summarizeFailures() {
+  def lines = []
+
+  if (fileExists('test-results/junit.xml')) {
+    def xml = readFile('test-results/junit.xml')
+    def matcher = (xml =~ /<testcase[^>]*classname="([^"]*)"[^>]*name="([^"]*)"[^>]*>[\s\S]*?<failure[^>]*message="([^"]*)"/)
+    while (matcher.find()) {
+      def suite = matcher.group(1)
+      def testName = matcher.group(2)
+      def message = matcher.group(3).replaceAll('&quot;', '"').replaceAll('&amp;', '&').take(240)
+      lines << "- ${suite} > ${testName}\n  ${message}"
+    }
+    matcher = null
+  }
+
+  if (lines.isEmpty() && fileExists('test-results/console.txt')) {
+    def consoleLines = readFile('test-results/console.txt').readLines()
+    consoleLines.eachWithIndex { line, idx ->
+      if (line =~ /\sFAIL\s+/ || line.contains(' FAIL  ')) {
+        lines << "- ${line.trim()}"
+        if (idx + 1 < consoleLines.size()) {
+          def next = consoleLines[idx + 1]
+          if (next.contains('AssertionError') || next.contains('Expected') || next.contains('expected')) {
+            lines << "  ${next.trim()}"
+          }
+        }
+      }
+    }
+  }
+
+  if (lines.isEmpty()) {
+    return 'Could not parse test output. Tests may have passed but a later stage failed (e.g. merge). Check the Jenkins console log.'
+  }
+
+  return lines.take(8).join('\n')
+}
+
 void notifyEmail(String subject, String body) {
   def to = env.NOTIFY_EMAIL?.trim()
-  if (!to) {
-    echo "Email skipped: set NOTIFY_EMAIL in Jenkinsfile."
+  if (!to || to.contains('YOUR_GMAIL')) {
+    echo "Email skipped: set NOTIFY_EMAIL in Jenkinsfile to your personal Gmail."
     return
   }
 
@@ -152,6 +214,6 @@ void notifyEmail(String subject, String body) {
          body: body
     echo "Email sent to ${to}"
   } catch (err) {
-    echo "Email failed (check SMTP under Manage Jenkins → System): ${err}"
+    echo "Email failed (configure Gmail SMTP under Manage Jenkins → System): ${err}"
   }
 }
