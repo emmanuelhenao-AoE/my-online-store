@@ -122,19 +122,24 @@ pipeline {
 }
 
 /**
- * Posts to a Slack Incoming Webhook stored as secret-text credential `slack-webhook`.
- * Escapes text lightly so branch names with quotes do not break JSON.
+ * Posts to Slack when credential `slack-webhook` exists.
+ * If missing, logs the message and continues so early builds can still go green.
  */
 void notifySlack(String color, String text) {
-  withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
-    def safe = text
-      .replace('\\', '\\\\')
-      .replace('"', '\\"')
-      .replace('\n', '\\n')
-    sh """
-      curl -sS -X POST -H 'Content-type: application/json' \
-        --data '{"attachments":[{"color":"${color}","mrkdwn_in":["text"],"text":"${safe}"}]}' \
-        "\$SLACK_WEBHOOK"
-    """
+  try {
+    withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
+      def safe = text
+        .replace('\\', '\\\\')
+        .replace('"', '\\"')
+        .replace('\n', '\\n')
+      sh """
+        curl -sS -X POST -H 'Content-type: application/json' \\
+          --data '{"attachments":[{"color":"${color}","mrkdwn_in":["text"],"text":"${safe}"}]}' \\
+          "\$SLACK_WEBHOOK"
+      """
+    }
+  } catch (err) {
+    echo "Slack skipped (add credential id 'slack-webhook' when ready). Message:\n${text}"
+    echo "Reason: ${err}"
   }
 }
