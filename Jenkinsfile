@@ -27,7 +27,7 @@ pipeline {
     GITHUB_REPO = 'emmanuelhenao-AoE/my-online-store'
     TARGET_BRANCH = 'master'
     // Your personal inbox — Jenkins sends alerts here
-    NOTIFY_EMAIL = 'emmanuelhenaoestrada@gmail.com'
+    NOTIFY_EMAIL = 'emmanuelhenao0816@gmail.com'
   }
 
   stages {
