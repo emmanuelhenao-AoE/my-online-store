@@ -1,6 +1,6 @@
 import { getProductById, isInStock } from "./products.js";
 
-const TAX_RATE = 0.17;
+const TAX_RATE = 0.07;
 const FREE_SHIPPING_THRESHOLD_CENTS = 7500;
 const FLAT_SHIPPING_CENTS = 599;
 
