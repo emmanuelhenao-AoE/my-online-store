@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const root = process.cwd();
@@ -9,6 +9,10 @@ mkdirSync(siteDir, { recursive: true });
 
 for (const file of ["index.html", "app.js", "styles.css"]) {
   cpSync(join(root, file), join(siteDir, file));
+}
+const buildInfo = join(root, "build-info.json");
+if (existsSync(buildInfo)) {
+  cpSync(buildInfo, join(siteDir, "build-info.json"));
 }
 cpSync(join(root, "src"), join(siteDir, "src"), { recursive: true });
 writeFileSync(join(siteDir, ".nojekyll"), "");

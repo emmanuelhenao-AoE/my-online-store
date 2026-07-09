@@ -98,6 +98,54 @@ pipeline {
         }
       }
     }
+
+    stage('Publish baseline') {
+      when {
+        expression {
+          return env.CURRENT_BRANCH == env.TARGET_BRANCH ||
+            (env.CURRENT_BRANCH != 'main' && env.CURRENT_BRANCH != 'unknown')
+        }
+      }
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'github-push',
+            usernameVariable: 'GIT_USER',
+            passwordVariable: 'GIT_PASS'
+          )
+        ]) {
+          sh '''
+            set -e
+
+            git config user.email "jenkins-ci@users.noreply.github.com"
+            git config user.name "Jenkins CI"
+
+            git remote set-url origin \
+              "https://${GIT_USER}:${GIT_PASS}@github.com/${GITHUB_REPO}.git"
+
+            git fetch --no-tags origin "${TARGET_BRANCH}"
+
+            if [ "${CURRENT_BRANCH}" != "${TARGET_BRANCH}" ]; then
+              git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
+            fi
+
+            export BRANCH_NAME="${TARGET_BRANCH}"
+            node scripts/generate-build-info.mjs
+
+            if git diff --quiet build-info.json 2>/dev/null && git ls-files --error-unmatch build-info.json >/dev/null 2>&1; then
+              echo "build-info.json unchanged — skip commit."
+              exit 0
+            fi
+
+            git add build-info.json
+            git commit -m "ci: update production baseline (${BUILD_NUMBER})"
+            git push origin "HEAD:${TARGET_BRANCH}"
+
+            echo "Production baseline published to master."
+          '''
+        }
+      }
+    }
   }
 
   post {
