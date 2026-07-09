@@ -140,3 +140,36 @@ checkoutForm.addEventListener("submit", (event) => {
 
 renderProducts();
 renderCart();
+renderBaseline();
+
+async function renderBaseline() {
+  const el = document.getElementById("baseline-info");
+  if (!el) return;
+
+  try {
+    const res = await fetch("./build-info.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("not found");
+    const info = await res.json();
+
+    const verified =
+      info.testsPassed != null && info.testsTotal != null
+        ? `${info.testsPassed}/${info.testsTotal} tests`
+        : "verified by CI";
+
+    const deployed = info.deployedAt
+      ? new Date(info.deployedAt).toUTCString()
+      : "unknown";
+
+    el.innerHTML = `
+      <p class="baseline-title">Software Baseline: ${info.baseline}</p>
+      <p class="baseline-line"><strong>Git:</strong> ${info.gitSha} · <strong>Branch:</strong> ${info.branch} · <strong>Verified:</strong> ${verified}</p>
+      <p class="baseline-line"><strong>Deployed:</strong> ${deployed} · <strong>Build:</strong> #${info.buildNumber}${info.verifiedBy ? ` · ${info.verifiedBy}` : ""}</p>
+      <p class="baseline-note">Production baseline only updates when CI promotes master. Failed branches do not change this.</p>
+    `;
+  } catch {
+    el.innerHTML = `
+      <p class="baseline-title">Software Baseline: not yet published</p>
+      <p class="baseline-line muted">No build-info.json on this deploy yet. After Jenkins passes on master, the baseline appears here.</p>
+    `;
+  }
+}
