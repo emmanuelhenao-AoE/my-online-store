@@ -307,7 +307,7 @@ footer {
 
 .baseline-info .baseline-meta {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1.4fr;
   gap: 0.55rem 1.25rem;
   font-size: 0.84rem;
   color: var(--muted);
