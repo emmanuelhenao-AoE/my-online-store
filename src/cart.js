@@ -4,7 +4,7 @@ const TAX_RATE = 0.07;
 const FREE_SHIPPING_THRESHOLD_CENTS = 7500;
 const FLAT_SHIPPING_CENTS = 599;
 
-/**
+/** 
  * Create an empty cart.
  * @returns {{ items: Record<string, number> }}
  */

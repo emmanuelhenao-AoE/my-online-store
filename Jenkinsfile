@@ -123,22 +123,25 @@ pipeline {
             git remote set-url origin \
               "https://${GIT_USER}:${GIT_PASS}@github.com/${GITHUB_REPO}.git"
 
-            git fetch --no-tags origin "${TARGET_BRANCH}"
+            # Must update origin/master ref (plain "git fetch origin master" only sets FETCH_HEAD)
+            git fetch --no-tags origin \
+              "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
 
-            if [ "${CURRENT_BRANCH}" != "${TARGET_BRANCH}" ]; then
-              git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
-            fi
+            git checkout -B "${TARGET_BRANCH}" "origin/${TARGET_BRANCH}"
 
             export BRANCH_NAME="${TARGET_BRANCH}"
             node scripts/generate-build-info.mjs
 
-            if git diff --quiet build-info.json 2>/dev/null && git ls-files --error-unmatch build-info.json >/dev/null 2>&1; then
+            if git diff --quiet -- build-info.json && git ls-files --error-unmatch build-info.json >/dev/null 2>&1; then
               echo "build-info.json unchanged — skip commit."
               exit 0
             fi
 
             git add build-info.json
             git commit -m "ci: update production baseline (${BUILD_NUMBER})"
+
+            # Rebase onto latest master in case another push landed, then push
+            git pull --rebase origin "${TARGET_BRANCH}"
             git push origin "HEAD:${TARGET_BRANCH}"
 
             echo "Production baseline published to master."
@@ -154,16 +157,15 @@ pipeline {
     }
     failure {
       script {
-        def merged = isFeatureBranch()
+        def feature = isFeatureBranch()
         def failureDetails = summarizeFailures()
 
         def body = """Build FAILED on branch: ${env.CURRENT_BRANCH}
 
 """
-        if (merged) {
-          body += """*** MASTER WAS NOT UPDATED ***
-Your changes on "${env.CURRENT_BRANCH}" were NOT merged to master.
-The live site (GitHub Pages) is unchanged.
+        if (feature) {
+          body += """Note: If tests passed but Publish baseline failed, your code may already be on master.
+Check GitHub master and the Jenkins console for the exact stage that failed.
 
 """
         } else {
@@ -178,8 +180,8 @@ ${failureDetails}
 Full build log:
 ${env.BUILD_URL}
 """
-        def subject = merged
-          ? "[CI FAIL] ${env.CURRENT_BRANCH} — tests failed, master NOT updated"
+        def subject = feature
+          ? "[CI FAIL] ${env.CURRENT_BRANCH} — build failed"
           : "[CI FAIL] master — build failed"
 
         notifyEmail(subject, body)
