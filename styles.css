@@ -282,48 +282,62 @@ input {
 
 footer {
   text-align: center;
-  padding: 2rem 1.5rem 2.5rem;
+  padding: 2.5rem 1.5rem 3rem;
   color: var(--muted);
   font-size: 0.9rem;
 }
 
 .baseline-info {
-  margin-top: 1rem;
-  padding: 0.85rem 1rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
   border: 1px solid var(--line);
-  border-radius: 0.65rem;
-  background: rgba(22, 38, 31, 0.6);
-  max-width: 42rem;
-  margin-left: auto;
-  margin-right: auto;
-  font-size: 0.82rem;
-  line-height: 1.55;
+  border-radius: 0.75rem;
+  background: rgba(22, 38, 31, 0.75);
+  max-width: 40rem;
   text-align: left;
 }
 
 .baseline-info .baseline-title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.75rem;
   color: var(--accent);
   font-weight: 700;
-  font-size: 0.88rem;
-  letter-spacing: 0.02em;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+}
+
+.baseline-info .baseline-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 1.25rem;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.baseline-info .baseline-meta span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.baseline-info .baseline-meta strong {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.85;
 }
 
 .baseline-info .baseline-line {
-  margin: 0.15rem 0;
+  margin: 0;
   color: var(--muted);
+  font-size: 0.84rem;
 }
 
-.baseline-info .baseline-line strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-
-.baseline-info .baseline-note {
-  margin: 0.5rem 0 0;
-  font-size: 0.78rem;
-  color: var(--muted);
-  font-style: italic;
+@media (max-width: 520px) {
+  .baseline-info .baseline-meta {
+    grid-template-columns: 1fr;
+  }
 }
 
 @keyframes rise {
