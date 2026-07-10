@@ -37,17 +37,29 @@ pipeline {
         script {
           env.CURRENT_BRANCH = env.BRANCH_NAME ?: env.GIT_BRANCH?.replaceFirst(/^origin\//, '') ?: 'unknown'
           echo "Building branch: ${env.CURRENT_BRANCH}"
+
+          // Stop the baseline feedback loop: Jenkins commits build-info.json to master,
+          // which must NOT trigger another baseline publish.
+          def lastMsg = sh(script: 'git log -1 --pretty=%s', returnStdout: true).trim()
+          if (lastMsg.startsWith('ci: update production baseline')) {
+            echo "Skipping build — commit is an automated baseline update (${lastMsg})."
+            env.SKIP_PIPELINE = 'true'
+          } else {
+            env.SKIP_PIPELINE = 'false'
+          }
         }
       }
     }
 
     stage('Install') {
+      when { expression { env.SKIP_PIPELINE != 'true' } }
       steps {
         sh 'npm ci'
       }
     }
 
     stage('Test') {
+      when { expression { env.SKIP_PIPELINE != 'true' } }
       steps {
         sh '''
           mkdir -p test-results
@@ -60,6 +72,7 @@ pipeline {
     stage('Merge to master') {
       when {
         allOf {
+          expression { env.SKIP_PIPELINE != 'true' }
           expression { env.CURRENT_BRANCH != env.TARGET_BRANCH }
           expression { env.CURRENT_BRANCH != 'main' }
           expression { env.CURRENT_BRANCH != 'unknown' }
@@ -99,11 +112,14 @@ pipeline {
       }
     }
 
+    // Only after a feature-branch merge — NEVER on master builds (that caused the loop).
     stage('Publish baseline') {
       when {
-        expression {
-          return env.CURRENT_BRANCH == env.TARGET_BRANCH ||
-            (env.CURRENT_BRANCH != 'main' && env.CURRENT_BRANCH != 'unknown')
+        allOf {
+          expression { env.SKIP_PIPELINE != 'true' }
+          expression { env.CURRENT_BRANCH != env.TARGET_BRANCH }
+          expression { env.CURRENT_BRANCH != 'main' }
+          expression { env.CURRENT_BRANCH != 'unknown' }
         }
       }
       steps {
@@ -123,7 +139,6 @@ pipeline {
             git remote set-url origin \
               "https://${GIT_USER}:${GIT_PASS}@github.com/${GITHUB_REPO}.git"
 
-            # Must update origin/master ref (plain "git fetch origin master" only sets FETCH_HEAD)
             git fetch --no-tags origin \
               "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
 
@@ -139,8 +154,6 @@ pipeline {
 
             git add build-info.json
             git commit -m "ci: update production baseline (${BUILD_NUMBER})"
-
-            # Rebase onto latest master in case another push landed, then push
             git pull --rebase origin "${TARGET_BRANCH}"
             git push origin "HEAD:${TARGET_BRANCH}"
 
