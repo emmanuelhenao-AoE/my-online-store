@@ -171,15 +171,18 @@ async function renderBaseline() {
       : "unknown";
 
     el.innerHTML = `
-      <p class="baseline-title">Software Baseline: ${info.baseline}</p>
-      <p class="baseline-line"><strong>Git:</strong> ${info.gitSha} · <strong>Branch:</strong> ${info.branch} · <strong>Verified:</strong> ${verified}</p>
-      <p class="baseline-line"><strong>Deployed:</strong> ${deployed} · <strong>Build:</strong> #${info.buildNumber}${info.verifiedBy ? ` · ${info.verifiedBy}` : ""}</p>
-      <p class="baseline-note">Production baseline only updates when CI promotes master. Failed branches do not change this.</p>
+      <p class="baseline-title">Software Baseline ${info.baseline}</p>
+      <div class="baseline-meta">
+        <span><strong>Git</strong> ${info.gitSha}</span>
+        <span><strong>Branch</strong> ${info.branch}</span>
+        <span><strong>Verified</strong> ${verified}</span>
+        <span><strong>Deployed</strong> ${deployed}</span>
+      </div>
     `;
   } catch {
     el.innerHTML = `
-      <p class="baseline-title">Software Baseline: not yet published</p>
-      <p class="baseline-line muted">No build-info.json on this deploy yet. After Jenkins passes on master, the baseline appears here.</p>
+      <p class="baseline-title">Software Baseline</p>
+      <p class="baseline-line muted">Not published yet — appears after a green CI promote to master.</p>
     `;
   }
 }
