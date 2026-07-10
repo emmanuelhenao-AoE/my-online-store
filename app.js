@@ -171,9 +171,8 @@ async function renderBaseline() {
       : "unknown";
 
     el.innerHTML = `
-      <p class="baseline-title">Software Baseline ${info.baseline}</p>
+      <p class="baseline-title">Software Baseline #${info.buildNumber}</p>
       <div class="baseline-meta">
-        <span><strong>Git</strong> ${info.gitSha}</span>
         <span><strong>Branch</strong> ${info.branch}</span>
         <span><strong>Verified</strong> ${verified}</span>
         <span><strong>Deployed</strong> ${deployed}</span>
