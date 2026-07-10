@@ -157,7 +157,17 @@ async function renderBaseline() {
         : "verified by CI";
 
     const deployed = info.deployedAt
-      ? new Date(info.deployedAt).toUTCString()
+      ? new Date(info.deployedAt).toLocaleString("en-US", {
+          timeZone: "America/Detroit",
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit",
+          timeZoneName: "short",
+        })
       : "unknown";
 
     el.innerHTML = `
