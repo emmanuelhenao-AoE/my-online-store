@@ -1,13 +1,13 @@
 {
-  "baseline": "BL-20260710-#23",
-  "gitSha": "065bb33",
-  "gitShaFull": "065bb331ec7de9d8c960d54db4fd62d778b0380f",
+  "baseline": "BL-20260710-#24",
+  "gitSha": "42504b1",
+  "gitShaFull": "42504b1b2a0352e7382c921fce1672e5a9b5a3f1",
   "branch": "master",
   "testsPassed": 18,
   "testsTotal": 18,
-  "buildNumber": "23",
+  "buildNumber": "24",
   "jenkinsJob": "my-online-store/feature%2Fci-demo",
-  "buildUrl": "http://localhost:8080/job/my-online-store/job/feature%252Fci-demo/23/",
-  "deployedAt": "2026-07-10T13:59:25.867Z",
+  "buildUrl": "http://localhost:8080/job/my-online-store/job/feature%252Fci-demo/24/",
+  "deployedAt": "2026-07-10T14:03:26.873Z",
   "verifiedBy": "Jenkins CI"
 }
